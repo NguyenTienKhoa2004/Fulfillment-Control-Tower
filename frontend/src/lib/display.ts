@@ -26,6 +26,16 @@ export function formatTime(value: string | null | undefined): string {
   return formatter.format(new Date(value));
 }
 
+export function assessmentFreshness(order: OrderSummary): 'unchecked' | 'stale' | 'fresh' {
+  if (!order.assessed_at) return 'unchecked';
+  const assessed = Date.parse(order.assessed_at);
+  const verified = Date.parse(order.data_verified_at || '');
+  const now = Date.now();
+  const invalidAge = (value: number) => !Number.isFinite(value) || value > now || now - value > 60 * 60_000;
+  return invalidAge(assessed) || (order.delivery_status !== 'DELIVERED' && invalidAge(verified))
+    ? 'stale' : 'fresh';
+}
+
 export function deliveryOutcome(order: OrderSummary): 'ON_TIME' | 'LATE' | 'UNVERIFIED' | null {
   if (order.delivery_status !== 'DELIVERED') return null;
   const dispatch = Date.parse(order.dispatched_at || '');

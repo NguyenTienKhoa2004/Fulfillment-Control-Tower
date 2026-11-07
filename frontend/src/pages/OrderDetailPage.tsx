@@ -8,6 +8,7 @@ import { IncidentCard } from '../components/IncidentCard';
 import { Timeline } from '../components/Timeline';
 import { EvaluateButton } from '../components/EvaluateButton';
 import { Icon } from '../components/Icon';
+import { OrderOverview } from '../components/OrderOverview';
 import { deliveryOutcome, formatTime } from '../lib/display';
 
 export function OrderDetailPage() {
@@ -21,11 +22,12 @@ export function OrderDetailPage() {
   useEffect(() => {
     if (query.data && location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [id, location.hash, Boolean(query.data)]);
-  return <section>
+  return <section className="order-detail-page">
     <Link className="back-link" to="/orders"><Icon name="back" size={16} />Danh sách đơn hàng</Link>
     <QueryState loading={query.isPending} error={query.error} retry={() => void query.refetch()} />
     {order && <>
       <div className="page-heading detail-heading"><div><p className="eyebrow">CHI TIẾT ĐƠN HÀNG · {order.store_code}</p><div className="detail-title-row"><h1>{order.order_number}</h1><StatusBadge value={order.delivery_status} /></div><p className="muted">{order.customer_reference}</p></div><EvaluateButton /></div>
+      <OrderOverview order={order} profile={profile.data} />
       <div className="detail-body"><div className="detail-primary">
       {outcome && <div className={`notice ${outcome === 'LATE' ? 'notice-warning' : outcome === 'ON_TIME' ? 'notice-success' : 'notice-neutral'}`}>
         <Icon name={outcome === 'ON_TIME' ? 'check' : 'clock'} size={20} /><div><strong>{outcome === 'LATE' ? 'Đã giao trễ so với hạn cam kết ban đầu' : outcome === 'ON_TIME' ? 'Đã giao đúng hạn cam kết' : 'Chưa đủ dữ liệu để xác định giao đúng hạn hay trễ'}</strong>
@@ -33,15 +35,17 @@ export function OrderDetailPage() {
       </div>}
       <div className="panel delivery-panel"><div className="section-heading"><h2>Thông tin giao hàng</h2><span className="timezone-label"><Icon name="clock" size={14} />Europe/Stockholm</span></div>
         <ol className="delivery-progress">{['Chuẩn bị & bàn giao', 'Đang vận chuyển', 'Giao thành công'].map((title, index) => <li key={title} className={step >= index ? 'step-complete' : ''} aria-current={step === index ? 'step' : undefined}><span>{step > index ? <Icon name="check" size={14} /> : index + 1}</span>{title}</li>)}</ol>
+        <details className="delivery-more"><summary>Xem các mốc giao hàng & dữ liệu nguồn<span className="risk-check-toggle" aria-hidden="true" /></summary>
         <dl className="delivery-fields">
           <div><dt>Dự kiến giao cho vận chuyển</dt><dd>{formatTime(order.planned_handover_at)}</dd></div>
           <div><dt>Hạn giao cam kết ban đầu</dt><dd className="due-value">{formatTime(order.original_delivery_due_at)}</dd></div>
           <div><dt>Dự kiến giao đến khách</dt><dd>{formatTime(order.estimated_delivery_at)}</dd></div>
           <div><dt>Đã giao cho vận chuyển lúc</dt><dd>{formatTime(order.dispatched_at)}</dd></div>
-          <div><dt>Giao thực tế</dt><dd>{formatTime(order.delivered_at)}</dd></div>
+          <div><dt>Giao thực tế</dt><dd>{order.delivered_at ? formatTime(order.delivered_at) : ['NOT_DISPATCHED', 'DISPATCHED'].includes(order.delivery_status) ? 'Chưa giao' : 'Chưa có dữ liệu'}</dd></div>
           <div><dt>Trạng thái kho</dt><dd><StatusBadge value={order.warehouse_status} /></dd></div>
         </dl>
         <div className="data-verification"><span>Dữ liệu xác minh lúc: <strong>{formatTime(order.data_verified_at)}</strong></span><span>Hạn cam kết được giữ nguyên khi giờ giao dự kiến thay đổi.</span></div>
+        </details>
       </div>
       <div className="detail-incidents"><div className="section-heading incident-section-heading"><div><h2>Hồ sơ sự cố <span className="subtle-count">{order.incidents.length}</span></h2><p className="muted">Mỗi sự cố có người phụ trách và tiến độ riêng.</p></div></div>
         <QueryState loading={profile.isPending} error={profile.error} retry={() => void profile.refetch()} />
@@ -49,7 +53,7 @@ export function OrderDetailPage() {
         {profile.data && order.incidents.map((incident) => <IncidentCard key={incident.id} incident={incident} profile={profile.data!} events={order.timeline.filter((event) => event.incident_id === incident.id)} />)}
       </div></div>
       <aside className="detail-risk"><RiskAssessmentPanel key={order.id} order={order} /></aside>
-      <aside className="detail-history">{profile.data && <Timeline events={order.timeline} incidents={order.incidents} profile={profile.data} />}</aside>
+      <aside className="detail-history">{profile.data && <Timeline key={order.id} events={order.timeline} incidents={order.incidents} profile={profile.data} />}</aside>
       </div>
     </>}
   </section>;
