@@ -37,7 +37,7 @@ async def validation_error(request: Request, exc: RequestValidationError):
         content=jsonable_encoder(
             {
                 "code": "VALIDATION_ERROR",
-                "message": "Dữ liệu không hợp lệ.",
+                "message": "Invalid data.",
                 "field_errors": [
                     {"loc": error["loc"], "msg": error["msg"], "type": error["type"]}
                     for error in exc.errors()
@@ -54,7 +54,7 @@ async def database_error(request: Request, exc: SQLAlchemyError):
         status_code=503,
         content={
             "code": "DATABASE_UNAVAILABLE",
-            "message": "Không thể cập nhật/đọc dữ liệu; thử lại sau.",
+            "message": "Unable to read or update data. Please try again later.",
         },
     )
 

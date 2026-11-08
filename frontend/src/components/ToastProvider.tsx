@@ -12,7 +12,7 @@ function ToastItem({ toast, dismiss }: { toast: Toast; dismiss: (id: string) => 
   }, [toast.id, dismiss]);
   return <div className="toast"><div className="toast-icon"><Icon name="bell" size={18} /></div>
     <div>{toast.href ? <Link to={toast.href} onClick={() => dismiss(toast.id)}>{toast.text}</Link> : toast.text}</div>
-    <button className="icon-button" aria-label="Đóng thông báo" onClick={() => dismiss(toast.id)}><Icon name="close" size={16} /></button>
+    <button className="icon-button" aria-label="Dismiss notification" onClick={() => dismiss(toast.id)}><Icon name="close" size={16} /></button>
   </div>;
 }
 
@@ -31,6 +31,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 export function useToast() {
   const notify = useContext(ToastContext);
-  if (!notify) throw new Error('Thiếu ToastProvider.');
+  if (!notify) throw new Error('ToastProvider is missing.');
   return notify;
 }

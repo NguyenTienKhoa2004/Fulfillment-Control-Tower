@@ -18,6 +18,7 @@ from app.schemas import (
     OrdersResponse,
     ProfileDTO,
     ResolveRequest,
+    VerifyOrderDataRequest,
     VersionRequest,
 )
 
@@ -49,6 +50,13 @@ def activity(db: Database, profile: CurrentProfile):
 @router.post("/demo/evaluate-risks", response_model=EvaluationResponse)
 def evaluate_risks(db: Database, profile: Logistics):
     return services.evaluate_risks(db, profile)
+
+
+@router.post("/orders/{order_id}/verify-data", response_model=OrderDetail)
+def verify_order_data(
+    order_id: UUID, body: VerifyOrderDataRequest, db: Database, profile: Logistics
+):
+    return services.verify_order_data(db, profile, order_id, body)
 
 
 @router.post("/incidents/{incident_id}/accept", response_model=IncidentDTO)

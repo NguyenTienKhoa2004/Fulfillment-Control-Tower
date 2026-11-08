@@ -122,3 +122,15 @@ class IncidentEvent(Base):
     actor_id: Mapped[UUID | None] = mapped_column(ForeignKey("profiles.id"))
     text: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class OrderDataVerification(Base):
+    __tablename__ = "order_data_verifications"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    order_id: Mapped[UUID] = mapped_column(ForeignKey("orders.id"), index=True)
+    actor_id: Mapped[UUID] = mapped_column(ForeignKey("profiles.id"))
+    verified_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    note: Mapped[str] = mapped_column(Text)
+    previous_data: Mapped[dict] = mapped_column(JSONB)
+    verified_data: Mapped[dict] = mapped_column(JSONB)

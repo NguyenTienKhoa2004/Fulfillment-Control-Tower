@@ -24,26 +24,26 @@ function Workspace() {
   }
   const initials = profile.data?.display_name.split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase() || 'NC';
   return <ToastProvider><div className="app-shell">
-    <aside className="sidebar"><Link to="/orders" className="brand"><span className="brand-symbol"><Icon name="box" size={23} /></span><span>netcom<span className="brand-subtitle">LOGISTICS WORKSPACE</span></span></Link>
-      <div className="sidebar-section-label">ĐIỀU PHỐI</div><nav aria-label="Điều hướng chính"><Link to="/orders" className="nav-link nav-active"><Icon name="grid" size={19} />Đơn hàng & sự cố</Link></nav>
-      <div className="sidebar-bottom"><span className="sidebar-info-icon"><Icon name="box" size={24} /></span><strong>Mọi cập nhật, một nơi.</strong><p>Phối hợp cửa hàng và logistics trong từng hồ sơ sự cố.</p><div className="sidebar-region"><span className="live-dot" />Sweden · Europe/Stockholm</div></div>
+    <aside className="sidebar"><Link to="/orders" className="brand compact-brand"><span>Order Fulfillment<span className="brand-title-line">Tower</span></span></Link>
+      <div className="sidebar-section-label">OPERATIONS</div><nav aria-label="Main navigation"><Link to="/orders" className="nav-link nav-active"><Icon name="grid" size={19} />Order Monitoring</Link></nav>
+      <div className="sidebar-bottom"><div className="sidebar-region">Vietnam time (UTC+7)</div></div>
     </aside>
-    <div className="workspace"><header className="topbar"><div className="workspace-title"><span className="mobile-brand">netcom / </span>Trung tâm điều phối <span className="workspace-tag">SE</span></div>
-      <div className="topbar-actions"><ThemeToggle /><ActivityMenu /><div className="account"><span className="avatar">{initials}</span><div><strong>{profile.data?.display_name || 'Tài khoản'}</strong><span>{profile.data ? labels[profile.data.role] : 'Đang tải…'}{profile.data?.store_code ? ` · ${profile.data.store_code}` : ''}</span></div></div>
-        {!isMock && <button className="icon-button logout-button" aria-label={leaving ? 'Đang đăng xuất' : 'Đăng xuất'} title="Đăng xuất" disabled={leaving} onClick={() => void logout()}><Icon name="logout" size={19} /></button>}
+    <div className="workspace"><header className="topbar"><div className="workspace-title"><span className="mobile-brand">netcom / </span>Operations workspace <span className="workspace-tag">SE</span></div>
+      <div className="topbar-actions"><ThemeToggle /><ActivityMenu /><div className="account"><span className="avatar">{initials}</span><div><strong>{profile.data?.display_name || 'Account'}</strong><span>{profile.data ? labels[profile.data.role] : 'Loading…'}{profile.data?.store_code ? ` · ${profile.data.store_code}` : ''}</span></div></div>
+        {!isMock && <button className="icon-button logout-button" aria-label={leaving ? 'Signing out' : 'Sign out'} title="Sign out" disabled={leaving} onClick={() => void logout()}><Icon name="logout" size={19} /></button>}
       </div></header>
-      {isMock && <div className="mock-banner"><strong>Chế độ dữ liệu mẫu</strong><span>Thao tác chỉ lưu trong phiên xem này; tải lại trang để khôi phục.</span></div>}
+      {isMock && <div className="mock-banner"><strong>Demo mode</strong><span>Changes are saved for this session only. Reload to restore demo data.</span></div>}
       {error && <div className="notice notice-error shell-notice" role="alert">{error}</div>}
-      {profile.error && <div className="notice notice-error shell-notice" role="alert"><span>{errorMessage(profile.error)}</span><button className="button button-small button-ghost" onClick={() => void profile.refetch()}>Tải lại tài khoản</button></div>}
+      {profile.error && <div className="notice notice-error shell-notice" role="alert"><span>{errorMessage(profile.error)}</span><button className="button button-small button-ghost" onClick={() => void profile.refetch()}>Reload account</button></div>}
       <main className="main-content"><Outlet /></main>
-      <footer className="workspace-footer"><span>NETCOM · LOGISTICS OPERATIONS</span><span>Giờ hiển thị theo Europe/Stockholm</span></footer>
+      <footer className="workspace-footer"><span>NETCOM · LOGISTICS OPERATIONS</span><span>Vietnam time (UTC+7)</span></footer>
     </div>
   </div></ToastProvider>;
 }
 
 function ProtectedLayout() {
   const { authenticated, loading, userId } = useAuth();
-  if (loading) return <div className="full-page-loading" role="status"><span className="spinner" />Đang kiểm tra phiên đăng nhập…</div>;
+  if (loading) return <div className="full-page-loading" role="status"><span className="spinner" />Checking your session…</div>;
   if (!authenticated) return <Navigate to="/login" replace />;
   return <Workspace key={userId} />;
 }
@@ -56,6 +56,6 @@ export default function App() {
       <Route path="/orders/:id" element={<OrderDetailPage />} />
     </Route>
     <Route path="/" element={<Navigate to="/orders" replace />} />
-    <Route path="*" element={<div className="not-found"><p className="eyebrow">404</p><h1>Không tìm thấy trang</h1><p className="muted">Địa chỉ có thể đã thay đổi.</p><Link className="button button-primary" to="/orders">Về danh sách đơn</Link></div>} />
+    <Route path="*" element={<div className="not-found"><p className="eyebrow">404</p><h1>Page not found</h1><p className="muted">The address may have changed.</p><Link className="button button-primary" to="/orders">Back to orders</Link></div>} />
   </Routes>;
 }

@@ -1,5 +1,5 @@
 import type { OrderDetail, Profile } from '../api/types';
-import { assessmentFreshness, formatTime, labels, ruleLabels } from '../lib/display';
+import { assessmentFreshness, formatTime, labels, quantity, ruleLabels } from '../lib/display';
 import { Icon } from './Icon';
 
 export function OrderOverview({ order, profile }: { order: OrderDetail; profile?: Profile }) {
@@ -13,7 +13,7 @@ export function OrderOverview({ order, profile }: { order: OrderDetail; profile?
   const unassigned = open.filter((incident) => !incident.assignee_id).length;
   const difference = Date.parse(order.estimated_delivery_at || '') - Date.parse(order.original_delivery_due_at || '');
   const title = primary?.risk_code === 'DELIVERY_ETA_LATE' && difference > 0
-    ? `Dự kiến giao trễ ${Math.ceil(difference / 60_000)} phút`
+    ? `Delivery expected ${Math.ceil(difference / 60_000)} minutes late`
     : primary ? ruleLabels[primary.risk_code] : labels[order.risk_status];
   const claim = profile?.role === 'LOGISTICS_COORDINATOR' && next?.status === 'NEW';
   const resolve = profile?.role === 'LOGISTICS_COORDINATOR' && next?.status === 'IN_PROGRESS'
@@ -22,23 +22,25 @@ export function OrderOverview({ order, profile }: { order: OrderDetail; profile?
   return <section className={`order-overview overview-${primary?.alert_type === 'DELAYED' ? 'delayed' : primary ? 'risk' : 'neutral'}`} aria-labelledby="order-overview-title">
     <div className="overview-top">
       <span className="overview-icon"><Icon name={primary ? 'alert' : 'box'} size={24} /></span>
-      <div className="overview-message"><p className="eyebrow">{freshness === 'stale' ? 'THEO LẦN KIỂM TRA GẦN NHẤT' : 'TỔNG QUAN ĐƠN HÀNG'}</p>
+      <div className="overview-message"><p className="eyebrow">{freshness === 'stale' ? 'BASED ON THE LATEST ASSESSMENT' : 'ORDER OVERVIEW'}</p>
         <h2 id="order-overview-title">{title}</h2>
-        <p>{open.length ? `${open.length} sự cố cần xử lý` : 'Không có sự cố đang mở'}
-          {unassigned > 0 && ` · ${unassigned} chưa có người phụ trách`}
-          {owners.length > 0 && ` · Phụ trách: ${owners.join(', ')}`}</p>
+        <p>{open.length ? quantity(open.length, 'open incident') : 'No open incidents'}
+          {unassigned > 0 && ` · ${unassigned} unassigned`}
+          {owners.length > 0 && ` · Assigned to: ${owners.join(', ')}`}</p>
       </div>
       {next && profile && <a className="button button-primary" href={`#${target}`} onClick={() => {
         requestAnimationFrame(() => document.getElementById(target)?.focus({ preventScroll: true }));
       }}><Icon name={claim ? 'user' : resolve ? 'check' : 'message'} size={17} />
-        {claim ? 'Nhận xử lý' : resolve ? 'Ghi nhận giải quyết' : 'Bổ sung thông tin'}<Icon name="arrow" size={16} /></a>}
+        {claim ? 'Take ownership' : resolve ? 'Record resolution' : 'Add information'}<Icon name="arrow" size={16} /></a>}
     </div>
     <div className="overview-deadlines">
-      <dl><dt>Hạn giao cam kết</dt><dd>{formatTime(order.original_delivery_due_at)}</dd></dl>
+      <dl><dt>Promised delivery deadline</dt><dd>{formatTime(order.original_delivery_due_at)}</dd></dl>
       <span className="deadline-arrow" aria-hidden="true"><Icon name="arrow" size={20} /></span>
-      <dl><dt>{order.delivery_status === 'DELIVERED' ? 'Giao thực tế' : 'Dự kiến giao đến khách'}</dt><dd>{formatTime(order.delivery_status === 'DELIVERED' ? order.delivered_at : order.estimated_delivery_at)}</dd></dl>
-      <div className="overview-timezone"><Icon name="clock" size={14} />Giờ Sweden · Europe/Stockholm</div>
+      <dl><dt>{order.delivery_status === 'DELIVERED' ? 'Actual delivery' : 'Estimated delivery'}</dt><dd>{formatTime(order.delivery_status === 'DELIVERED' ? order.delivered_at : order.estimated_delivery_at)}</dd></dl>
+      <div className="overview-timezone"><Icon name="clock" size={14} />Vietnam time (UTC+7)</div>
     </div>
-    {freshness === 'stale' && <div className="assessment-warning"><Icon name="clock" size={16} /><span><strong>Cần cập nhật đánh giá.</strong> Kết quả kiểm tra hoặc dữ liệu nguồn đã cũ / cần xác minh. {profile?.role === 'LOGISTICS_COORDINATOR' ? 'Xác minh dữ liệu nguồn và kiểm tra lại rủi ro.' : 'Nhờ logistics xác minh dữ liệu và kiểm tra lại rủi ro.'}</span></div>}
+    {freshness === 'stale' && <div className="assessment-warning"><Icon name="clock" size={16} /><span><strong>Assessment needs updating.</strong> The assessment or source data is out of date or needs verification. {profile?.role === 'LOGISTICS_COORDINATOR'
+      ? <a href="#source-verification">Update & verify data</a>
+      : 'Ask logistics to verify source data and reassess risks.'}</span></div>}
   </section>;
 }

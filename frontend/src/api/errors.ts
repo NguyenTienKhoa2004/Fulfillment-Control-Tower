@@ -9,12 +9,12 @@ export class ApiRequestError extends Error {
 
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiRequestError && error.status === 409) {
-    return 'Có người khác đã cập nhật sự cố. Dữ liệu đang được tải lại; nội dung bạn nhập vẫn được giữ. Hãy xem trạng thái mới trước khi gửi lại.';
+    return 'Someone else updated this data. Refreshing the latest version; your draft has been kept. Review the new status before submitting again.';
   }
-  if (error instanceof ApiRequestError && error.status === 403) return error.message || 'Bạn không có quyền thực hiện thao tác này.';
-  if (error instanceof ApiRequestError && error.status === 404) return 'Không tìm thấy dữ liệu hoặc dữ liệu nằm ngoài phạm vi tài khoản.';
-  if (error instanceof Error && error.name === 'TypeError') return 'Không thể kết nối máy chủ. Kiểm tra kết nối rồi thử lại.';
-  return error instanceof Error ? error.message : 'Không thể thực hiện thao tác. Vui lòng thử lại.';
+  if (error instanceof ApiRequestError && error.status === 403) return error.message || 'You do not have permission to perform this action.';
+  if (error instanceof ApiRequestError && error.status === 404) return 'Data was not found or is outside your account scope.';
+  if (error instanceof Error && error.name === 'TypeError') return 'Cannot connect to the server. Check your connection and try again.';
+  return error instanceof Error ? error.message : 'Unable to complete this action. Please try again.';
 }
 
 export function fieldError(error: unknown, field: string): string | undefined {

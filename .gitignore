@@ -13,3 +13,7 @@ __pycache__/
 .tools/
 *.tsbuildinfo
 coverage/
+
+# Local planning and script documents
+*[pP][lL][aA][nN]*.md
+*[sS][cC][rR][iI][pP][tT]*.md

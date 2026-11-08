@@ -1,7 +1,7 @@
 # Frontend Netcom
 
 React + TypeScript + Vite, React Router, TanStack Query 5, Supabase Auth.
-Giao diện tiếng Việt; mọi mốc ngày giờ hiển thị theo Europe/Stockholm.
+Giao diện tiếng Anh; mọi mốc ngày giờ hiển thị theo giờ Việt Nam (Asia/Ho_Chi_Minh, UTC+7).
 Nút mặt trăng/mặt trời ở thanh trên cùng và trang đăng nhập chuyển theme sáng/tối.
 Lần đầu dùng theo thiết lập hệ thống; lựa chọn sau đó được lưu trên trình duyệt.
 
@@ -44,13 +44,23 @@ Mock chỉ bật ở Vite development; production build luôn dùng API/Auth th�
 
 ## Các màn hình
 
-- **Đơn hàng:** ba cards đếm incident mới/đang xử lý/đã xử lý trong scope, độc lập
-  với bộ lọc. Bấm card để lọc theo trạng thái sự cố. Có tìm kiếm mã đơn/khách hàng/
-  cửa hàng, lọc cảnh báo và giai đoạn. Bộ lọc nằm trên URL.
+- **Đơn hàng:** dải KPI đếm đơn Delayed, At risk, Needs verification và mốc handover/
+  giao hàng đến hạn trong 2 giờ tới. KPI tính trên toàn scope, có thể giao nhau;
+  bấm để lọc. Thanh Incidents hiển thị tổng và số sự cố theo trạng thái riêng.
+  Compact là mặc định, lựa chọn mật độ lưu trên trình duyệt. Countdown cập nhật
+  theo đồng hồ; ETA/actual hiển thị chênh lệch với hạn cam kết. Lý do mở đầy đủ qua
+  Details hoặc hover. Logistics có thể Assign to me ngay trên dòng; frontend lấy
+  version hiện tại trước khi gọi accept và tải lại nếu gặp xung đột 409.
+  Có tìm kiếm mã đơn/khách hàng/cửa hàng, lọc cảnh báo và giai đoạn trên URL.
+  Rule priority là chỉ số minh bạch theo rule, không phải xác suất: quá hạn 80 +
+  5 mỗi giờ trễ (tối đa 100); cảnh báo sớm 50 + 5 mỗi giờ ETA vượt hạn (tối đa 70);
+  chưa có cảnh báo nhưng đến hạn trong 1h/2h là 35/20, ngoài khoảng đó là 0.
+  Đơn đã giao, thiếu dữ liệu, dữ liệu cũ hoặc vừa qua hạn từ lần đánh giá trước
+  không được chấm điểm; cần xác minh/đánh giá lại.
 - **Chi tiết:** trạng thái kho/giao hàng, hạn cam kết/ETA/mốc thực tế, dữ liệu xác minh,
   bốn kết quả rule, từng hồ sơ sự cố và lịch sử tổng hợp. Đơn đã giao hiển thị đúng
   hạn/trễ/chưa đủ dữ liệu riêng với cảnh báo hiện tại.
-  Khối rủi ro thu gọn nằm ở cột phải; bấm từng dòng để mở lý do và thời điểm đánh giá.
+  Khối rủi ro thu gọn nằm ở cột trái; bấm từng dòng để mở lý do và thời điểm đánh giá.
 - **Phối hợp:** logistics nhận incident NEW; chỉ assignee giải quyết incident IN_PROGRESS.
   Hai role đều thêm ghi chú trong scope. Form yêu cầu nội dung không rỗng, tối đa 5000 ký tự.
   Bản nháp không bị polling xóa. Lỗi 409 tải lại dữ liệu, giữ nội dung và không tự gửi lại.
@@ -58,8 +68,9 @@ Mock chỉ bật ở Vite development; production build luôn dùng API/Auth th�
   Poll orders/detail/activity mỗi 10 giây khi app đang hoạt động; mutation thành công
   refetch ngay. Lần tải đầu không toast lịch sử; event mới được dedupe theo ID trong memory.
 
-Không có form đổi hạn cam kết, sửa ETA hoặc đánh dấu giao thành công.
-Chuyển giai đoạn demo qua lệnh backend đã mô tả trong `backend/README.md`.
+Logistics có thể cập nhật ETA và mốc giao thực tế qua form xác minh dữ liệu;
+hạn giao cam kết được giữ nguyên. Cũng có thể chuyển giai đoạn demo qua lệnh
+backend đã mô tả trong `backend/README.md`.
 
 ## Build
 

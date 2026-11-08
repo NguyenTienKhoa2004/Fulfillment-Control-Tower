@@ -1,4 +1,4 @@
-"""Bốn rule thuần: không đọc DB, không tự đọc đồng hồ."""
+"""Four pure rules: no database access or internal clock reads."""
 
 from datetime import datetime, timedelta
 
@@ -18,9 +18,9 @@ def evaluate_order(
     handover_warning_minutes: int = 120,
 ) -> list[RuleAssessment]:
     if not aware(now):
-        raise ValueError("now phải có timezone.")
+        raise ValueError("now must include a timezone.")
 
-    def result(code, status="CLEAR", reason="Không có cảnh báo.", alert=None):
+    def result(code, status="CLEAR", reason="No alerts.", alert=None):
         return RuleAssessment(
             risk_code=code, status=status, reason=reason, alert_type=alert, assessed_at=now
         )
@@ -34,82 +34,82 @@ def evaluate_order(
         DeliveryStatus.DISPATCHED,
         DeliveryStatus.DELIVERED,
     ):
-        return all_results("UNKNOWN", "Chưa xác định trạng thái giao hàng.")
+        return all_results("UNKNOWN", "Delivery status is unknown.")
     dispatched, delivered = order.dispatched_at, order.delivered_at
     if stage == DeliveryStatus.DELIVERED:
         if aware(dispatched) and aware(delivered) and dispatched <= delivered <= now:
-            return all_results("CLEAR", "Đơn đã giao xong; không còn cảnh báo hiệu lực.")
-        return all_results("UNKNOWN", "Mốc xuất giao/giao thực tế thiếu hoặc mâu thuẫn.")
+            return all_results("CLEAR", "The order has been delivered; no active alerts remain.")
+        return all_results("UNKNOWN", "Dispatch or delivery timestamps are missing or inconsistent.")
 
     verified = order.data_verified_at
     if not aware(verified) or not timedelta(0) <= now - verified <= timedelta(
         minutes=max_age_minutes
     ):
-        return all_results("UNKNOWN", "Trạng thái chưa xác minh, ở tương lai hoặc đã cũ.")
+        return all_results("UNKNOWN", "Status is unverified, future-dated, or out of date.")
     if stage == DeliveryStatus.NOT_DISPATCHED and (dispatched is not None or delivered is not None):
-        return all_results("UNKNOWN", "Trạng thái chưa xuất giao mâu thuẫn mốc thực tế.")
+        return all_results("UNKNOWN", "The not-dispatched status conflicts with actual timestamps.")
     if stage == DeliveryStatus.DISPATCHED and (
         not aware(dispatched) or dispatched > now or delivered is not None
     ):
-        return all_results("UNKNOWN", "Trạng thái đang vận chuyển mâu thuẫn mốc thực tế.")
+        return all_results("UNKNOWN", "The in-transit status conflicts with actual timestamps.")
 
     warehouse_code, handover_code, eta_code, overdue_code = RiskCode
-    warehouse = result(warehouse_code, reason="Rule kho không áp dụng ở giai đoạn này.")
-    handover = result(handover_code, reason="Rule bàn giao không áp dụng ở giai đoạn này.")
+    warehouse = result(warehouse_code, reason="The warehouse rule does not apply at this stage.")
+    handover = result(handover_code, reason="The handover rule does not apply at this stage.")
     if stage == DeliveryStatus.NOT_DISPATCHED:
         planned = order.planned_handover_at
         if not aware(planned):
-            warehouse = result(warehouse_code, "UNKNOWN", "Thiếu giờ bàn giao hợp lệ.")
-            handover = result(handover_code, "UNKNOWN", "Thiếu giờ bàn giao hợp lệ.")
+            warehouse = result(warehouse_code, "UNKNOWN", "A valid handover time is missing.")
+            handover = result(handover_code, "UNKNOWN", "A valid handover time is missing.")
         else:
             if planned - timedelta(minutes=handover_warning_minutes) <= now <= planned:
                 if order.warehouse_status == WarehouseStatus.NOT_READY:
                     warehouse = result(
                         warehouse_code,
                         "AT_RISK",
-                        "Kho chưa sẵn sàng gần giờ bàn giao.",
+                        "The warehouse is not ready as handover time approaches.",
                         AlertType.RISK,
                     )
                 elif order.warehouse_status == WarehouseStatus.READY:
-                    warehouse = result(warehouse_code, reason="Kho đã sẵn sàng.")
+                    warehouse = result(warehouse_code, reason="The warehouse is ready.")
                 else:
-                    warehouse = result(warehouse_code, "UNKNOWN", "Cần xác minh trạng thái kho.")
+                    warehouse = result(warehouse_code, "UNKNOWN", "Warehouse status needs verification.")
             else:
-                warehouse = result(warehouse_code, reason="Ngoài khoảng cảnh báo trước bàn giao.")
+                warehouse = result(warehouse_code, reason="Outside the pre-handover warning window.")
             handover = (
                 result(
-                    handover_code, "AT_RISK", "Đã quá giờ nhưng chưa bàn giao.", AlertType.DELAYED
+                    handover_code, "AT_RISK", "The handover deadline has passed, but the order has not been handed over.", AlertType.DELAYED
                 )
                 if now > planned
-                else result(handover_code, reason="Chưa quá giờ bàn giao.")
+                else result(handover_code, reason="The handover deadline has not passed.")
             )
 
     due = order.original_delivery_due_at
-    eta = result(eta_code, reason="Rule ETA không áp dụng khi chưa xuất giao.")
+    eta = result(eta_code, reason="The ETA rule does not apply before dispatch.")
     if not aware(due):
-        overdue = result(overdue_code, "UNKNOWN", "Thiếu hạn giao cam kết hợp lệ.")
+        overdue = result(overdue_code, "UNKNOWN", "A valid promised delivery deadline is missing.")
         if stage == DeliveryStatus.DISPATCHED:
-            eta = result(eta_code, "UNKNOWN", "Thiếu hạn giao cam kết hợp lệ.")
+            eta = result(eta_code, "UNKNOWN", "A valid promised delivery deadline is missing.")
     elif now > due:
         overdue = result(
-            overdue_code, "AT_RISK", "Đã quá hạn giao nhưng chưa giao xong.", AlertType.DELAYED
+            overdue_code, "AT_RISK", "The delivery deadline has passed, but delivery is not complete.", AlertType.DELAYED
         )
         if stage == DeliveryStatus.DISPATCHED:
-            eta = result(eta_code, reason="Đã quá hạn; dùng cảnh báo quá hạn giao.")
+            eta = result(eta_code, reason="The delivery deadline has passed; the overdue delivery alert applies.")
     else:
-        overdue = result(overdue_code, reason="Chưa quá hạn giao.")
+        overdue = result(overdue_code, reason="The delivery deadline has not passed.")
         if stage == DeliveryStatus.DISPATCHED:
             estimated = order.estimated_delivery_at
             if not aware(estimated) or estimated < now:
                 eta = result(
-                    eta_code, "UNKNOWN", "ETA thiếu, không hợp lệ hoặc đã nằm trong quá khứ."
+                    eta_code, "UNKNOWN", "The ETA is missing, invalid, or in the past."
                 )
             elif estimated > due:
                 eta = result(
-                    eta_code, "AT_RISK", "Dự kiến giao trễ hơn hạn cam kết.", AlertType.RISK
+                    eta_code, "AT_RISK", "Estimated delivery is later than the promised deadline.", AlertType.RISK
                 )
             else:
-                eta = result(eta_code, reason="ETA không vượt hạn giao.")
+                eta = result(eta_code, reason="The ETA is within the delivery deadline.")
     return [warehouse, handover, eta, overdue]
 
 

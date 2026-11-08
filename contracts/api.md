@@ -1,7 +1,7 @@
 # API contract — backend MVP v0.2
 
 Prefix `/api/v1`, Bearer access token từ Supabase. UUID là string, timestamp ISO 8601
-có timezone (lưu UTC); UI hiển thị Europe/Stockholm. Không có API login/logout.
+có timezone (lưu UTC); UI hiển thị giờ Việt Nam (Asia/Ho_Chi_Minh, UTC+7). Không có API login/logout.
 
 ## API đã có
 
@@ -44,7 +44,8 @@ Ví dụ một phần `OrderSummary` (các trường thời gian còn lại đư
 }
 ```
 
-`OrderDetail` có thêm `timeline: IncidentEvent[]`, `incidents` chứa DTO đầy đủ.
+`OrderDetail` có thêm `timeline: IncidentEvent[]`, `incidents` chứa DTO đầy đủ
+và `data_verifications: OrderDataVerification[]` (mới nhất trước).
 Một đơn có nhiều incidents. `risk_assessments` chỉ là kết quả hiện tại,
 không thay thế lịch sử sự cố.
 
@@ -55,22 +56,23 @@ Các endpoint sau đã triển khai. Mỗi thao tác lưu dữ liệu và event 
 | Method | Path | Body | Response |
 | --- | --- | --- | --- |
 | POST | `/demo/evaluate-risks` | Không | `{evaluated_count, created_incident_count}` |
+| POST | `/orders/{id}/verify-data` | Dữ liệu đã xác minh, ghi chú và mốc nguồn đang xem | `OrderDetail` |
 | POST | `/incidents/{id}/accept` | `{expected_version: number}` | `Incident` |
 | POST | `/incidents/{id}/notes` | `{text: string}` | `IncidentEvent` |
 | POST | `/incidents/{id}/resolve` | `{expected_version: number, resolution_note: string}` | `Incident` |
 
-`evaluate-risks`, `accept`, `resolve` chỉ dành cho logistics. `notes` cho cả hai role
+`evaluate-risks`, `verify-data`, `accept`, `resolve` chỉ dành cho logistics. `notes` cho cả hai role
 trong store scope. `resolve` yêu cầu người gọi là assignee hiện tại.
 
 ### Kiểm tra rủi ro
 
-`POST /demo/evaluate-risks` đánh giá các đơn thuộc tập `SE-DEMO-001` đến `SE-DEMO-011`.
+`POST /demo/evaluate-risks` đánh giá các đơn thuộc tập `SE-DEMO-001` đến `SE-DEMO-012`.
 Mọi rule trong một lần chạy dùng cùng `now`; dữ liệu đơn được khóa khi đánh giá.
 Lưu đủ bốn kết quả kể cả CLEAR/UNKNOWN, tổng hợp ưu tiên AT_RISK > UNKNOWN > CLEAR.
 Ngưỡng độ mới và cảnh báo bàn giao lấy từ cấu hình backend (mặc định 60/120 phút).
 
 ```json
-{"evaluated_count": 11, "created_incident_count": 5}
+{"evaluated_count": 12, "created_incident_count": 5}
 ```
 
 Số incident có thể thay đổi theo dữ liệu/thời điểm. `AT_RISK` tạo incident `NEW`
@@ -83,6 +85,42 @@ Trạng thái UNKNOWN, trạng thái chưa hoàn tất bị stale hoặc mốc t
 trả UNKNOWN. Đơn DELIVERED có `dispatched_at <= delivered_at <= now` trả CLEAR
 cho bốn rule, không phụ thuộc ETA/kho/data_verified_at. Dùng hạn cam kết và
 `delivered_at` để hiển thị đã giao đúng hạn/trễ riêng.
+
+### Cập nhật và xác minh dữ liệu nguồn
+
+`POST /orders/{id}/verify-data` chỉ cho logistics. Người dùng phải đối chiếu thông tin
+với kho/vận chuyển và ghi rõ nguồn/nội dung xác minh. Ví dụ đơn chưa xuất giao:
+
+```json
+{
+  "expected_data_verified_at": "2026-11-07T08:00:00Z",
+  "warehouse_status": "READY",
+  "delivery_status": "NOT_DISPATCHED",
+  "estimated_delivery_at": "2026-11-07T20:00:00+07:00",
+  "dispatched_at": null,
+  "delivered_at": null,
+  "verification_note": "Đã liên hệ kho, xác nhận hàng sẵn sàng; vận chuyển cung cấp ETA mới."
+}
+```
+
+- Tất cả trường trên bắt buộc có trong request; trường thời gian cho phép null như ví dụ.
+  `expected_data_verified_at` lấy từ đơn đang xem, có thể null nếu chưa từng xác minh.
+- `warehouse_status`: READY / NOT_READY / UNKNOWN. `delivery_status` phải xác nhận là
+  NOT_DISPATCHED / DISPATCHED / DELIVERED; không xác minh thành UNKNOWN.
+- Request không cho đổi hạn giao cam kết ban đầu hoặc giờ bàn giao dự kiến.
+- Không chuyển ngược giai đoạn giao hàng. NOT_DISPATCHED không có mốc thực tế;
+  DISPATCHED cần `dispatched_at` và chưa có `delivered_at`; DELIVERED cần cả hai.
+  Các mốc thực tế không ở tương lai, `dispatched_at <= delivered_at`.
+- Thời gian có timezone bắt buộc. Đơn chưa giao nếu có ETA thì ETA không ở quá khứ;
+  chưa xác định ETA có thể gửi null và rule tương ứng sẽ trả UNKNOWN khi cần.
+- `verification_note` được trim, từ 1–2000 ký tự. Payload chứa trường ngoài contract bị từ chối.
+- Backend khóa đơn, đối chiếu `expected_data_verified_at`; dữ liệu nguồn đã đổi trả 409.
+  Frontend giữ draft, tải lại thông tin và yêu cầu người dùng nạp dữ liệu mới trước khi lưu lại.
+- Backend ghi `data_verified_at` bằng giờ thực tế của server và đánh giá lại riêng đơn này.
+  Cập nhật nguồn, lịch sử xác minh, kết quả rule và incident mới cùng một transaction.
+- Không reset incident cũ, không đổi owner/notes/status và không tự resolve khi CLEAR/DELIVERED.
+- `data_verifications` trả người xác minh (`actor_name`), thời điểm, ghi chú và snapshot dữ liệu
+  trước/sau. Store Staff chỉ đọc lịch sử của cửa hàng mình, không được gọi thao tác xác minh.
 
 ### Nhận xử lý / giải quyết
 

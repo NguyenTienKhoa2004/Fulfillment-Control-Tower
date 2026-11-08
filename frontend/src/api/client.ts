@@ -13,7 +13,7 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
   const response = await fetch(`${base.replace(/\/$/, '')}${path}`, { ...options, headers });
   if (!response.ok) {
     const body: ApiError = await response.json().catch(() => ({
-      code: `HTTP_${response.status}`, message: `Request thất bại (${response.status}).`,
+      code: `HTTP_${response.status}`, message: `Request failed (${response.status}).`,
     }));
     if (response.status === 401) window.dispatchEvent(new CustomEvent('netcom:session-expired', {
       detail: { userId: data.session?.user.id },
@@ -29,6 +29,9 @@ export const api: ApiAdapter = isMock ? mockApi : {
   order: (id, signal) => request(`/orders/${encodeURIComponent(id)}`, { signal }),
   activity: (signal) => request('/activity', { signal }),
   evaluateRisks: () => request('/demo/evaluate-risks', { method: 'POST' }),
+  verifyOrderData: (id, body) => request(`/orders/${encodeURIComponent(id)}/verify-data`, {
+    method: 'POST', body: JSON.stringify(body),
+  }),
   acceptIncident: (id, expected_version) => request(`/incidents/${encodeURIComponent(id)}/accept`, {
     method: 'POST', body: JSON.stringify({ expected_version }),
   }),

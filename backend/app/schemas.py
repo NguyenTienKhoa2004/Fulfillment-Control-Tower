@@ -2,8 +2,13 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.legacy_text import (
+    DEMO_CUSTOMER_REFERENCES,
+    english_ownership_message,
+    english_system_message,
+)
 from app.models import (
     AlertType,
     DeliveryStatus,
@@ -34,6 +39,11 @@ class RuleAssessment(DTO):
     reason: str
     assessed_at: datetime
 
+    @field_validator("reason")
+    @classmethod
+    def english_reason(cls, value: str) -> str:
+        return english_system_message(value)
+
 
 class IncidentSummary(DTO):
     id: UUID
@@ -62,6 +72,14 @@ class IncidentEventDTO(DTO):
     text: str
     created_at: datetime
 
+    @model_validator(mode="after")
+    def english_event_text(self):
+        if self.type == EventType.DETECTED:
+            self.text = english_system_message(self.text)
+        elif self.type == EventType.ACCEPTED:
+            self.text = english_ownership_message(self.text)
+        return self
+
 
 class ActivityItem(IncidentEventDTO):
     order_id: UUID
@@ -87,10 +105,58 @@ class OrderSummary(DTO):
     assessed_at: datetime | None
     incidents: list[IncidentSummary] = Field(default_factory=list)
 
+    @field_validator("risk_reason")
+    @classmethod
+    def english_risk_reason(cls, value: str | None) -> str | None:
+        return english_system_message(value) if value is not None else None
+
+    @field_validator("customer_reference")
+    @classmethod
+    def english_demo_reference(cls, value: str) -> str:
+        return DEMO_CUSTOMER_REFERENCES.get(value, value)
+
+
+class OrderDataVerificationDTO(DTO):
+    id: UUID
+    actor_name: str
+    verified_at: datetime
+    note: str
+    previous_data: dict
+    verified_data: dict
+
 
 class OrderDetail(OrderSummary):
     incidents: list[IncidentDTO] = Field(default_factory=list)
     timeline: list[IncidentEventDTO] = Field(default_factory=list)
+    data_verifications: list[OrderDataVerificationDTO] = Field(default_factory=list)
+
+
+class VerifyOrderDataRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    expected_data_verified_at: AwareDatetime | None
+    warehouse_status: WarehouseStatus
+    delivery_status: Literal["NOT_DISPATCHED", "DISPATCHED", "DELIVERED"]
+    estimated_delivery_at: AwareDatetime | None
+    dispatched_at: AwareDatetime | None
+    delivered_at: AwareDatetime | None
+    verification_note: str = Field(min_length=1, max_length=2000)
+
+    @model_validator(mode="after")
+    def consistent_milestones(self):
+        if self.delivery_status == "NOT_DISPATCHED":
+            if self.dispatched_at is not None or self.delivered_at is not None:
+                raise ValueError("An order that has not been dispatched cannot have dispatch or delivery timestamps.")
+        elif self.dispatched_at is None:
+            raise ValueError("Enter the actual carrier handover time.")
+        if self.delivery_status == "DISPATCHED" and self.delivered_at is not None:
+            raise ValueError("An order in transit cannot have an actual delivery timestamp.")
+        if self.delivery_status == "DELIVERED":
+            if self.delivered_at is None:
+                raise ValueError("Enter the actual delivery time.")
+            if self.delivered_at < self.dispatched_at:
+                raise ValueError("The delivery time must be at or after dispatch.")
+        return self
 
 
 class OrdersResponse(DTO):

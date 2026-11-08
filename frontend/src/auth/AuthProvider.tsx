@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isMock) return;
       const rejectedUser = (event as CustomEvent<{ userId: string }>).detail?.userId;
       if (!rejectedUser || rejectedUser !== currentUser.current) return;
-      setAuthMessage('Phiên đăng nhập không còn hợp lệ. Vui lòng đăng nhập lại.');
+      setAuthMessage('Your session has expired. Please sign in again.');
       queryClient.clear();
       setSession(null);
       currentUser.current = null;
@@ -77,6 +77,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('Thiếu AuthProvider.');
+  if (!context) throw new Error('AuthProvider is missing.');
   return context;
 }

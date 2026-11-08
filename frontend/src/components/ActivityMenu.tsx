@@ -36,15 +36,15 @@ export function ActivityMenu() {
   }, []);
 
   return <details className="activity-menu" ref={details}>
-    <summary className="activity-toggle" aria-label={`Hoạt động gần đây, ${count} sự cố mới`}>
-      <Icon name="bell" /><span className="activity-label">Hoạt động</span><span className="count-bubble">{count}</span>
+    <summary className="activity-toggle" aria-label={`Recent activity, ${count} new incidents`}>
+      <Icon name="bell" /><span className="activity-label">Activity</span><span className="count-bubble">{count}</span>
     </summary>
     <div className="activity-dropdown">
-      <div className="dropdown-heading"><div><strong>Hoạt động gần đây</strong><p className="muted">20 cập nhật mới nhất</p></div><span className="live-dot" aria-label="Tự cập nhật" /></div>
-      {query.isPending && <p className="dropdown-empty">Đang tải…</p>}
+      <div className="dropdown-heading"><div><strong>Recent activity</strong><p className="muted">Latest 20 updates</p></div><span className="live-dot" aria-label="Auto-updating" /></div>
+      {query.isPending && <p className="dropdown-empty">Loading…</p>}
       {query.error && <div className="dropdown-empty error" role="alert">{errorMessage(query.error)}
-        <button className="button button-small button-ghost" onClick={() => void query.refetch()}>Thử lại</button></div>}
-      {query.data?.items.length === 0 && <div className="dropdown-empty"><Icon name="bell" size={28} /><p>Chưa có hoạt động.</p></div>}
+        <button className="button button-small button-ghost" onClick={() => void query.refetch()}>Try again</button></div>}
+      {query.data?.items.length === 0 && <div className="dropdown-empty"><Icon name="bell" size={28} /><p>No activity yet.</p></div>}
       <div className="activity-list">{query.data?.items.map((event) => <Link key={event.id}
         to={`/orders/${event.order_id}#incident-${event.incident_id}`} onClick={() => { if (details.current) details.current.open = false; }}>
         <div className={`event-marker event-${event.type.toLowerCase()}`}><Icon name={event.type === 'NOTE_ADDED' ? 'message' : event.type === 'DETECTED' ? 'alert' : 'check'} size={16} /></div>

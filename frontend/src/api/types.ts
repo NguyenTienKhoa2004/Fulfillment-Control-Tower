@@ -70,6 +70,24 @@ export interface OrderSummary {
 export interface OrderDetail extends OrderSummary {
   incidents: Incident[];
   timeline: IncidentEvent[];
+  data_verifications: OrderDataVerification[];
+}
+export interface OrderDataVerification {
+  id: string;
+  actor_name: string;
+  verified_at: string;
+  note: string;
+  previous_data: Record<string, string | null>;
+  verified_data: Record<string, string | null>;
+}
+export interface VerifyOrderDataRequest {
+  expected_data_verified_at: string | null;
+  warehouse_status: WarehouseStatus;
+  delivery_status: Exclude<DeliveryStatus, 'UNKNOWN'>;
+  estimated_delivery_at: string | null;
+  dispatched_at: string | null;
+  delivered_at: string | null;
+  verification_note: string;
 }
 export interface ApiError {
   code: string;
@@ -86,6 +104,7 @@ export interface ApiAdapter {
   order(id: string, signal?: AbortSignal): Promise<OrderDetail>;
   activity(signal?: AbortSignal): Promise<{ items: ActivityItem[] }>;
   evaluateRisks(): Promise<EvaluationResult>;
+  verifyOrderData(id: string, body: VerifyOrderDataRequest): Promise<OrderDetail>;
   acceptIncident(id: string, expected_version: number): Promise<Incident>;
   addNote(id: string, text: string): Promise<IncidentEvent>;
   resolveIncident(id: string, expected_version: number, resolution_note: string): Promise<Incident>;

@@ -12,9 +12,11 @@ bash scripts/setup.sh
 ```
 
 Script tạo `.env` nếu chưa có, build image/cài dependency theo lockfile, bật PostgreSQL,
-chạy Alembic migration, seed 11 đơn mẫu, rồi chạy frontend/backend có hot reload và pgAdmin.
+chạy Alembic migration, seed 12 đơn mẫu đã đánh giá rủi ro, rồi chạy frontend/backend có hot reload và pgAdmin.
 Không ghi đè `.env` hoặc reset dữ liệu khi chạy lại. Lần đầu cần Internet.
 Docker dùng dependency trong container; không cần Node/Python trên máy.
+
+Kịch bản trình bày và lệnh làm mới dữ liệu trước buổi demo: [DEMO.md](DEMO.md).
 
 - Frontend: http://localhost:5173
 - Swagger: http://localhost:8000/docs
